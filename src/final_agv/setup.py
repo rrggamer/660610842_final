@@ -1,3 +1,5 @@
+import os
+from glob import glob
 from setuptools import find_packages, setup
 
 package_name = 'final_agv'
@@ -10,6 +12,7 @@ setup(
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
+        (os.path.join('share',package_name, 'models'), glob('model/*.task')),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
@@ -21,7 +24,8 @@ setup(
     entry_points={
         'console_scripts': [
 		'final_sender = final_agv.agv_sender:main',
-		'final_teleop = final_agv.teleop_agv:main'
+		'final_teleop = final_agv.teleop_agv:main',
+		'final_tracker = final_agv.gesture_tracker_node:main'
         ],
     },
 )
