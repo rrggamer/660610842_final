@@ -13,6 +13,7 @@ setup(
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
         (os.path.join('share',package_name, 'models'), glob('model/*.task')),
+        (os.path.join('share',package_name, 'srv'), glob('srv/*')),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
@@ -25,7 +26,8 @@ setup(
         'console_scripts': [
 		'final_sender = final_agv.agv_sender:main',
 		'final_teleop = final_agv.teleop_agv:main',
-		'final_tracker = final_agv.gesture_tracker_node:main'
+		'final_tracker = final_agv.gesture_tracker_node:main',
+		'final_service = final_agv.collision_srv:main'
         ],
     },
 )

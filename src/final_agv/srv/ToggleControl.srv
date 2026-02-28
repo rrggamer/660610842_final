@@ -1,0 +1,6 @@
+# Request (คำสั่งจากผู้ใช้)
+bool enable_human
+---
+# Response (ตอบกลับจาก Server)
+bool success
+string status_message
