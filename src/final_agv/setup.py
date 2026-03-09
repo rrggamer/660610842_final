@@ -14,6 +14,7 @@ setup(
         ('share/' + package_name, ['package.xml']),
         (os.path.join('share',package_name, 'models'), glob('model/*.task')),
         (os.path.join('share',package_name, 'srv'), glob('srv/*')),
+        (os.path.join('share',package_name, 'launch'), glob('launch/*')),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
@@ -27,7 +28,8 @@ setup(
 		'final_sender = final_agv.agv_sender:main',
 		'final_teleop = final_agv.teleop_agv:main',
 		'final_tracker = final_agv.gesture_tracker_node:main',
-		'final_service = final_agv.collision_srv:main'
+		'final_service = final_agv.collision_srv:main',
+		'udp_alarm = final_agv.udp_alarm:main'
         ],
     },
 )

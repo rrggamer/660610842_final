@@ -42,15 +42,34 @@ class GestureTrackerNode(Node):
             self.get_logger().error("ไม่สามารถเปิดกล้องได้ โปรดตรวจสอบการเชื่อมต่อ")
             raise SystemExit
         
-        self.MAX_LINEAR = 0.5  # m/s
+        self.MAX_LINEAR = 0.2  # m/s
         self.MAX_ANGULAR = 1.0 # rad/s
         self.DEADZONE = 50     # รัศมี pixel ที่ให้หุ่นยนต์หยุดนิ่ง
 
         self.timer = self.create_timer(0.1, self.timer_callback)
-        self.get_logger().info("Gesture Tracker Node เริ่มทำงานแล้ว (กด 'q' ที่หน้าต่างภาพเพื่อออก)")
+        self.get_logger().info("Gesture Tracker Node เริ่มทำงานแล้ว (กางมือเพื่อสั่งการ, กด 'q' เพื่อออก)")
 
     def result_callback(self, result, output_image, timestamp_ms):
         self.latest_result = result
+
+    # --- ฟังก์ชันตรวจสอบว่ามือกางอยู่หรือไม่ ---
+    def is_hand_open(self, hand_landmarks):
+        # จุดอ้างอิง: 
+        # นิ้วชี้ (Index): 8 (ปลาย), 5 (โคน)
+        # นิ้วกลาง (Middle): 12 (ปลาย), 9 (โคน)
+        # นิ้วนาง (Ring): 16 (ปลาย), 13 (โคน)
+        
+        fingers_open = 0
+        
+        # เช็คนิ้วชี้
+        if hand_landmarks[8].y < hand_landmarks[5].y: fingers_open += 1
+        # เช็คนิ้วกลาง
+        if hand_landmarks[12].y < hand_landmarks[9].y: fingers_open += 1
+        # เช็คนิ้วนาง
+        if hand_landmarks[16].y < hand_landmarks[13].y: fingers_open += 1
+
+        # ถ้ากาง 2 ใน 3 นิ้ว ถือว่ากางมือ (เผื่อความคลาดเคลื่อน)
+        return fingers_open >= 2
 
     def timer_callback(self):
         success, frame = self.cap.read()
@@ -74,35 +93,53 @@ class GestureTrackerNode(Node):
         cv2.line(frame, (center_x, 0), (center_x, h), (200, 200, 200), 1)
         cv2.line(frame, (0, center_y), (w, center_y), (200, 200, 200), 1)
 
+        # ตัวแปรสำหรับเช็คสถานะมือเพื่อแสดงบน UI
+        right_status = "Closed"
+        left_status = "Closed"
+
         if self.latest_result and self.latest_result.hand_landmarks:
             for i, hand_landmarks in enumerate(self.latest_result.hand_landmarks):
                 label = self.latest_result.handedness[i][0].category_name
+                
+                # ตรวจสอบว่ามือกางอยู่หรือไม่
+                hand_open = self.is_hand_open(hand_landmarks)
                 
                 lm = hand_landmarks[9]
                 hx = int(lm.x * w)
                 hy = int(lm.y * h)
 
-                
                 for landmark in hand_landmarks:
                     cx, cy = int(landmark.x * w), int(landmark.y * h)
-                    cv2.circle(frame, (cx, cy), 4, (0, 255, 0), -1)
+                    # เปลี่ยนสีจุดตามสถานะมือ (เขียว=กาง/สั่งได้, แดง=กำ/สั่งไม่ได้)
+                    color = (0, 255, 0) if hand_open else (0, 0, 255)
+                    cv2.circle(frame, (cx, cy), 4, color, -1)
 
                 if label == 'Right':
-                    dx = hx - center_x
-                    dy = hy - center_y
-                    
-                    if abs(dx) > self.DEADZONE:
-                        msg.linear.y = -(dx / (w / 2.0)) * self.MAX_LINEAR
-                    if abs(dy) > self.DEADZONE:
-                        msg.linear.x = -(dy / (h / 2.0)) * self.MAX_LINEAR
+                    right_status = "Open (Active)" if hand_open else "Closed"
+                    # สั่งการได้ต่อเมื่อมือ "กาง" เท่านั้น
+                    if hand_open:
+                        dx = hx - center_x
+                        dy = hy - center_y
+                        
+                        if abs(dx) > self.DEADZONE:
+                            msg.linear.y = -(dx / (w / 2.0)) * self.MAX_LINEAR
+                        if abs(dy) > self.DEADZONE:
+                            msg.linear.x = -(dy / (h / 2.0)) * self.MAX_LINEAR
 
                 elif label == 'Left':
-                    dx = hx - center_x
-                    if abs(dx) > self.DEADZONE:
-                        msg.angular.z = -(dx / (w / 2.0)) * self.MAX_ANGULAR
+                    left_status = "Open (Active)" if hand_open else "Closed"
+                    # สั่งการได้ต่อเมื่อมือ "กาง" เท่านั้น
+                    if hand_open:
+                        dx = hx - center_x
+                        if abs(dx) > self.DEADZONE:
+                            msg.angular.z = -(dx / (w / 2.0)) * self.MAX_ANGULAR
 
+        # --- แสดง UI สถานะมือ ---
         ui_text = f"Lin X: {msg.linear.x:.2f} | Lin Y: {msg.linear.y:.2f} | Ang Z: {msg.angular.z:.2f}"
-        cv2.putText(frame, ui_text, (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+        cv2.putText(frame, ui_text, (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
+        
+        status_text = f"Left Hand: {left_status} | Right Hand: {right_status}"
+        cv2.putText(frame, status_text, (20, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 200, 0), 2)
         
         self.publisher_.publish(msg)
 

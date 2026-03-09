@@ -1,0 +1,18 @@
+systemctl status myagv_core.service
+journalctl -u myagv_core.service -f
+sudo systemctl restart myagv_core.service
+sudo systemctl stop myagv_core.servic
+
+sudo systemctl daemon-reload
+sudo systemctl enable myagv_core.service
+sudo systemctl start myagv_core.service
+
+
+source install/setup.bash
+ros2 service call /toggle_human_control final_agv_interfaces/srv/ToggleControl "{enable_human: false}"
+ros2 service call /toggle_human_control final_agv_interfaces/srv/ToggleControl "{enable_human: true}"
+
+unset ROS_DISTRO
+unset PYTHONPATH
+unset CMAKE_PREFIX_PATH
+source /opt/ros/galactic/setup.bash

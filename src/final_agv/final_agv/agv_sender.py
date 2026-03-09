@@ -5,7 +5,7 @@ import socket
 
 # !!! CONFIGURATION !!!
 # Replace this with the AGV Robot's IP Address (e.g., '192.168.1.105')
-UDP_IP = '10.79.140.238'
+UDP_IP = 'er.local'
 UDP_PORT = 15000
 
 class CmdVelToUDP(Node):
